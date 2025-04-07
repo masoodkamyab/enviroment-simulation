@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Building & Camera Editor – Production UI with Report Export</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500" rel="stylesheet">
+    <style>
+      /* Global Styles */
+      body {
+        margin: 0;
+        font-family: 'Roboto', sans-serif;
+        background: #fafafa;
+        color: #333;
+      }
+      header {
+        background: #1976d2;
+        color: #fff;
+        padding: 10px 20px;
+        text-align: center;
+        font-size: 16px;
+        font-weight: 500;
+      }
+      /* Three column layout: Left = control panel; Center = renderer; Right = object list */
+      #container {
+        display: flex;
+        height: calc(100vh - 50px);
+      }
+      /* Left Sidebar: Control Panel */
+      #leftSidebar {
+        width: 250px;
+        background: #fff;
+        border-right: 1px solid #ddd;
+        padding: 10px;
+        overflow-y: auto;
+      }
+      /* Center Panel: Renderer */
+      #centerPanel {
+        flex: 1;
+        position: relative;
+      }
+      #rendererContainer {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+      }
+      /* Right Sidebar: Object List */
+      #rightSidebar {
+        width: 300px;
+        background: #fff;
+        border-left: 1px solid #ddd;
+        padding: 10px;
+        overflow-y: auto;
+      }
+      /* Control Panel Styles */
+      #controls h3 {
+        margin: 0 0 5px;
+        font-size: 16px;
+        border-bottom: 1px solid #ccc;
+        padding-bottom: 5px;
+      }
+      #controls label {
+        display: block;
+        font-size: 14px;
+        margin-bottom: 2px;
+      }
+      #controls input {
+        width: 100%;
+        padding: 6px 8px;
+        font-size: 14px;
+        margin-bottom: 8px;
+        box-sizing: border-box;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+      }
+      #controls button {
+        padding: 8px 12px;
+        background: #1976d2;
+        color: #fff;
+        border: none;
+        border-radius: 3px;
+        cursor: pointer;
+        font-size: 14px;
+        margin-bottom: 10px;
+      }
+      #controls button:hover {
+        background: #1565c0;
+      }
+      #controls p {
+        font-size: 12px;
+        color: #777;
+      }
+      /* Object List Redesign */
+      #objectList h3 {
+        margin-top: 0;
+        font-size: 16px;
+        border-bottom: 1px solid #ddd;
+        padding-bottom: 5px;
+      }
+      #objectList ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+      .object-card {
+        background: #f7f7f7;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        margin-bottom: 10px;
+        padding: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      }
+      .object-header {
+        font-weight: 500;
+        margin-bottom: 4px;
+        font-size: 14px;
+        color: #1976d2;
+      }
+      .object-details {
+        font-size: 13px;
+        margin-bottom: 4px;
+      }
+      .object-actions {
+        text-align: right;
+      }
+      .object-actions button {
+        padding: 4px 8px;
+        font-size: 12px;
+        margin-left: 4px;
+        border: none;
+        border-radius: 3px;
+        cursor: pointer;
+        background: #e0e0e0;
+      }
+      .object-actions button:hover {
+        background: #ccc;
+      }
+      /* Export Report Button Style */
+      #exportReport {
+        width: 100%;
+        padding: 10px;
+        background: #4caf50;
+        color: #fff;
+        border: none;
+        border-radius: 3px;
+        cursor: pointer;
+        font-size: 14px;
+        margin-top: 10px;
+      }
+      #exportReport:hover {
+        background: #43a047;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      Building & Camera Editor – Production UI with Persistence
+    </header>
+    <div id="container">
+      <div id="leftSidebar">
+        <div id="controls">
+          <h3>Controls</h3>
+          <p>
+            W: Translate • E: Rotate • R: Scale • Q: Toggle Space<br>
+            X/Y/Z: Toggle Axes • Space: Toggle Controls • Esc: Reset<br>
+            <b>C</b>: View Through Camera • V: Random Zoom<br>
+            <small>All coordinates are in meters (only positive values allowed).</small>
+          </p>
+          <h3>Create Building</h3>
+          <label>Length (m):</label>
+          <input type="number" id="bLength" value="10" min="0" />
+          <label>Width (m):</label>
+          <input type="number" id="bWidth" value="8" min="0" />
+          <label>Height (m):</label>
+          <input type="number" id="bHeight" value="6" min="0" />
+          <button id="addBuilding">Add Building</button>
+          <h3>Create Camera</h3>
+          <label>Name:</label>
+          <input type="text" id="cName" value="Cam 1" />
+          <label>Horizontal FOV (°):</label>
+          <input type="number" id="cHFOV" value="60" min="0" />
+          <label>Vertical FOV (°):</label>
+          <input type="number" id="cVFOV" value="45" min="0" />
+          <label>Range (m):</label>
+          <input type="number" id="cRange" value="20" min="0" />
+          <button id="addCamera">Add Camera</button>
+          <h3>Line Drawing</h3>
+          <button id="toggleLineDrawing">Enable Line Drawing Mode</button>
+          <button id="clearLines">Clear All Lines</button>
+          <p><small>Double-click a line or use its Edit button to change measurement.</small></p>
+          <button id="exportReport">Export Camera Report</button>
+        </div>
+      </div>
+      <div id="centerPanel">
+        <div id="rendererContainer"></div>
+      </div>
+      <div id="rightSidebar">
+        <h3>Object List</h3>
+        <ul id="objectListUL"></ul>
+      </div>
+    </div>
+
+    <!-- Import map -->
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "./three.module.js",
+          "three/addons/": "./jsm/"
+        }
+      }
+    </script>
+    <script type="module">
+      import * as THREE from 'three';
+      import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+      import { TransformControls } from 'three/addons/controls/TransformControls.js';
+
+      let cameraPersp, cameraOrtho, currentCamera;
+      let scene, renderer, transformControls, orbitControls;
+      const buildingObjects = [];
+      const cameraObjects = [];
+      const lineObjects = [];
+      let nextObjectId = 1;
+
+      // Variables for drag-to-draw line
+      let isLineDrawingMode = false;
+      let isCurrentlyDrawingLine = false;
+      let lineStartPoint = null;
+      let currentLinePoints = [];
+      let currentLine = null;
+
+      // Variables for camera view mode
+      let isCameraViewMode = false;
+      let activeCameraObject = null;
+      let editorCamera = null;
+      let cameraView = null;
+
+      init();
+      addRuler();
+      renderer.domElement.addEventListener('dblclick', onDoubleClick);
+      loadState();
+      render();
+
+      // --- Persistence Functions ---
+      function saveState() {
+        const state = {
+          buildings: buildingObjects.map(b => ({
+            type: 'building',
+            length: b.geometry.parameters.width,
+            height: b.geometry.parameters.height,
+            depth: b.geometry.parameters.depth,
+            position: { x: b.position.x, y: b.position.y, z: b.position.z }
+          })),
+          cameras: cameraObjects.map(c => ({
+            type: 'camera',
+            name: c.userData.name,
+            hFOV: c.userData.hFOV,
+            vFOV: c.userData.vFOV,
+            range: c.userData.range || 20,
+            position: { x: c.position.x, y: c.position.y, z: c.position.z },
+            rotation: { x: c.rotation.x, y: c.rotation.y, z: c.rotation.z }
+          })),
+          lines: lineObjects.map(l => {
+            const posAttr = l.geometry.attributes.position;
+            return {
+              type: 'line',
+              start: { x: posAttr.getX(0), y: posAttr.getY(0), z: posAttr.getZ(0) },
+              end: { x: posAttr.getX(1), y: posAttr.getY(1), z: posAttr.getZ(1) }
+            };
+          })
+        };
+        localStorage.setItem("projectState", JSON.stringify(state));
+      }
+      function loadState() {
+        const stateStr = localStorage.getItem("projectState");
+        if (!stateStr) return;
+        const state = JSON.parse(stateStr);
+        if (state.buildings) {
+          state.buildings.forEach(bData => {
+            const b = createBuilding({ length: bData.length, width: bData.depth, height: bData.height });
+            b.position.set(bData.position.x, bData.position.y, bData.position.z);
+          });
+        }
+        if (state.cameras) {
+          state.cameras.forEach(cData => {
+            const c = createCameraObject({ name: cData.name, hFOV: cData.hFOV, vFOV: cData.vFOV, range: cData.range });
+            c.position.set(cData.position.x, cData.position.y, cData.position.z);
+            c.rotation.set(cData.rotation.x, cData.rotation.y, cData.rotation.z);
+          });
+        }
+        if (state.lines) {
+          state.lines.forEach(lData => {
+            currentLinePoints = [
+              new THREE.Vector3(lData.start.x, lData.start.y, lData.start.z),
+              new THREE.Vector3(lData.end.x, lData.end.y, lData.end.z)
+            ];
+            const lineMaterial = new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 5 });
+            const lineGeometry = new THREE.BufferGeometry().setFromPoints(currentLinePoints);
+            const l = new THREE.Line(lineGeometry, lineMaterial);
+            l.userData = { objectType: 'line', id: nextObjectId++ };
+            const distance = currentLinePoints[0].distanceTo(currentLinePoints[1]);
+            const labelSprite = makeTextSprite(distance.toFixed(1) + " m", { fontsize: 12, borderThickness: 1 });
+            const midPoint = new THREE.Vector3().addVectors(currentLinePoints[0], currentLinePoints[1]).multiplyScalar(0.5);
+            labelSprite.position.copy(midPoint);
+            labelSprite.position.y += 0.3;
+            scene.add(labelSprite);
+            l.userData.dimensionLabel = labelSprite;
+            scene.add(l);
+            lineObjects.push(l);
+          });
+        }
+        updateObjectList();
+      }
+      // --- End Persistence Functions ---
+
+      function makeTextSprite(message, parameters) {
+        parameters = parameters || {};
+        const fontface = parameters.fontface || "Arial";
+        const fontsize = parameters.fontsize || 12;
+        const borderThickness = parameters.borderThickness || 1;
+        const borderColor = parameters.borderColor || { r:0, g:0, b:0, a:1.0 };
+        const backgroundColor = parameters.backgroundColor || { r:255, g:255, b:255, a:1.0 };
+        const canvas = document.createElement("canvas");
+        const context = canvas.getContext("2d");
+        context.font = fontsize + "px " + fontface;
+        const metrics = context.measureText(message);
+        const textWidth = metrics.width;
+        canvas.width = textWidth + borderThickness * 2;
+        canvas.height = fontsize * 1.4 + borderThickness * 2;
+        context.font = fontsize + "px " + fontface;
+        context.fillStyle = "rgba(" + backgroundColor.r + "," + backgroundColor.g + "," + backgroundColor.b + "," + backgroundColor.a + ")";
+        context.fillRect(0, 0, canvas.width, canvas.height);
+        context.strokeStyle = "rgba(" + borderColor.r + "," + borderColor.g + "," + borderColor.b + "," + borderColor.a + ")";
+        context.lineWidth = borderThickness;
+        context.strokeRect(0, 0, canvas.width, canvas.height);
+        context.fillStyle = "rgba(0, 0, 0, 1.0)";
+        context.fillText(message, borderThickness, fontsize + borderThickness);
+        const texture = new THREE.CanvasTexture(canvas);
+        const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
+        const sprite = new THREE.Sprite(spriteMaterial);
+        sprite.scale.set(1, 0.5, 1);
+        return sprite;
+      }
+
+      function init() {
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(window.innerWidth - 550, window.innerHeight);
+        renderer.setClearColor(0xffffff);
+        document.getElementById('rendererContainer').appendChild(renderer.domElement);
+
+        const aspect = (window.innerWidth - 550) / window.innerHeight;
+        const frustumSize = 5;
+        cameraPersp = new THREE.PerspectiveCamera(50, aspect, 0.1, 10000);
+        cameraOrtho = new THREE.OrthographicCamera(-frustumSize * aspect, frustumSize * aspect, frustumSize, -frustumSize, 0.1, 10000);
+        currentCamera = cameraPersp;
+        editorCamera = currentCamera;
+        currentCamera.position.set(5, 2.5, 15);
+
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xffffff);
+        scene.add(new THREE.GridHelper(10000, 1000, 0xcccccc, 0xdddddd));
+
+        const ambientLight = new THREE.AmbientLight(0xffffff);
+        scene.add(ambientLight);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 4);
+        directionalLight.position.set(1, 1, 1);
+        scene.add(directionalLight);
+
+        orbitControls = new OrbitControls(currentCamera, renderer.domElement);
+        orbitControls.update();
+        orbitControls.addEventListener('change', render);
+
+        transformControls = new TransformControls(currentCamera, renderer.domElement);
+        transformControls.setMode('translate');
+        transformControls.addEventListener('change', render);
+        transformControls.addEventListener('dragging-changed', (event) => {
+          if (!isLineDrawingMode) {
+            orbitControls.enabled = !event.value;
+          }
+        });
+        transformControls.addEventListener('objectChange', () => {
+          const obj = transformControls.object;
+          if (!obj) return;
+          obj.position.x = Math.max(0, obj.position.x);
+          obj.position.y = Math.max(0, obj.position.y);
+          obj.position.z = Math.max(0, obj.position.z);
+          if (obj.userData.objectType === 'building') {
+            const minY = obj.userData.height / 2;
+            if (obj.position.y !== minY) {
+              obj.position.y = minY;
+            }
+          }
+          updateObjectList();
+          render();
+          saveState();
+        });
+        scene.add(transformControls);
+        scene.add(transformControls.getHelper());
+
+        document.getElementById('addBuilding').addEventListener('click', () => {
+          const length = Math.abs(parseFloat(document.getElementById('bLength').value));
+          const width = Math.abs(parseFloat(document.getElementById('bWidth').value));
+          const height = Math.abs(parseFloat(document.getElementById('bHeight').value));
+          createBuilding({ length, width, height });
+          updateObjectList();
+          saveState();
+        });
+        document.getElementById('addCamera').addEventListener('click', () => {
+          const name = document.getElementById('cName').value;
+          const hFOV = Math.abs(parseFloat(document.getElementById('cHFOV').value));
+          const vFOV = Math.abs(parseFloat(document.getElementById('cVFOV').value));
+          const range = Math.abs(parseFloat(document.getElementById('cRange').value));
+          createCameraObject({ name, hFOV, vFOV, range });
+          updateObjectList();
+          saveState();
+        });
+        document.getElementById('toggleLineDrawing').addEventListener('click', () => {
+          isLineDrawingMode = !isLineDrawingMode;
+          if (isLineDrawingMode) {
+            document.getElementById('toggleLineDrawing').textContent = "Disable Line Drawing Mode";
+            transformControls.detach();
+            orbitControls.enabled = false;
+          } else {
+            document.getElementById('toggleLineDrawing').textContent = "Enable Line Drawing Mode";
+            orbitControls.enabled = true;
+          }
+        });
+        document.getElementById('clearLines').addEventListener('click', () => {
+          lineObjects.forEach(line => {
+            if (line.userData.dimensionLabel) scene.remove(line.userData.dimensionLabel);
+            scene.remove(line);
+          });
+          lineObjects.length = 0;
+          updateObjectList();
+          saveState();
+          render();
+        });
+        document.getElementById('exportReport').addEventListener('click', exportReport);
+
+        renderer.domElement.addEventListener('pointerdown', onPointerDown);
+        window.addEventListener('keydown', onKeyDown);
+        window.addEventListener('keyup', onKeyUp);
+        window.addEventListener('resize', onWindowResize);
+      }
+
+      function addRuler() {
+        const rulerGroup = new THREE.Group();
+        const tickMaterial = new THREE.LineBasicMaterial({ color: 0x000000 });
+        const xTicksGeometry = new THREE.BufferGeometry();
+        const xTickPositions = [];
+        for (let x = 0; x <= 50; x++) {
+          const tickLength = (x % 10 === 0) ? 1.0 : 0.5;
+          xTickPositions.push(x, 0, 0, x, tickLength, 0);
+        }
+        xTicksGeometry.setAttribute('position', new THREE.Float32BufferAttribute(xTickPositions, 3));
+        const xTicks = new THREE.LineSegments(xTicksGeometry, tickMaterial);
+        rulerGroup.add(xTicks);
+        const zTicksGeometry = new THREE.BufferGeometry();
+        const zTickPositions = [];
+        for (let z = 0; z <= 50; z++) {
+          const tickLength = (z % 10 === 0) ? 1.0 : 0.5;
+          zTickPositions.push(0, 0, z, 0, tickLength, z);
+        }
+        zTicksGeometry.setAttribute('position', new THREE.Float32BufferAttribute(zTickPositions, 3));
+        const zTicks = new THREE.LineSegments(zTicksGeometry, tickMaterial);
+        rulerGroup.add(zTicks);
+        scene.add(rulerGroup);
+      }
+
+      function createBuilding({ length, width, height }) {
+        const geometry = new THREE.BoxGeometry(length, height, width);
+        const color = new THREE.Color(Math.random(), Math.random(), Math.random());
+        const material = new THREE.MeshLambertMaterial({ color: color });
+        const building = new THREE.Mesh(geometry, material);
+        building.position.set(0, height / 2, 0);
+        building.userData = { objectType: 'building', height: height, id: nextObjectId++ };
+        scene.add(building);
+        buildingObjects.push(building);
+        return building;
+      }
+
+      function createCameraObject({ name, hFOV, vFOV, range }) {
+        const cameraGroup = new THREE.Group();
+        cameraGroup.userData = { objectType: 'camera', name, hFOV, vFOV, id: nextObjectId++, range: range };
+        const bodyGeometry = new THREE.BoxGeometry(0.5, 0.375, 0.25);
+        const bodyMaterial = new THREE.MeshLambertMaterial({ color: 0x333333 });
+        const bodyMesh = new THREE.Mesh(bodyGeometry, bodyMaterial);
+        bodyMesh.userData.nonSelectable = true;
+        cameraGroup.add(bodyMesh);
+        const lensGeometry = new THREE.CylinderGeometry(0.075, 0.075, 0.25, 32);
+        const lensMaterial = new THREE.MeshLambertMaterial({ color: 0x222222 });
+        const lensMesh = new THREE.Mesh(lensGeometry, lensMaterial);
+        lensMesh.rotation.x = Math.PI / 2;
+        lensMesh.position.z = - (0.25 / 2 + 0.125);
+        lensMesh.userData.nonSelectable = true;
+        cameraGroup.add(lensMesh);
+        const fovCone = createCameraFOV({ hFOV, vFOV, range });
+        fovCone.userData.nonSelectable = true;
+        fovCone.position.z = - (0.25 / 2 + 0.125 + range / 2);
+        cameraGroup.add(fovCone);
+        cameraGroup.position.set(0, 10, 0);
+        scene.add(cameraGroup);
+        cameraObjects.push(cameraGroup);
+        return cameraGroup;
+      }
+
+      function createCameraFOV({ hFOV, vFOV, range }) {
+        const hAngle = THREE.MathUtils.degToRad(hFOV);
+        const radius = range * Math.tan(hAngle / 2);
+        const geometry = new THREE.ConeGeometry(radius, range, 32, 1, true);
+        const material = new THREE.MeshBasicMaterial({
+          color: 0xff0000,
+          transparent: true,
+          opacity: 0.3,
+          side: THREE.DoubleSide
+        });
+        const cone = new THREE.Mesh(geometry, material);
+        cone.rotation.x = Math.PI / 2;
+        return cone;
+      }
+
+      function getInteractiveObjects() {
+        return buildingObjects.concat(cameraObjects, lineObjects);
+      }
+
+      function onPointerDown(event) {
+        if (isLineDrawingMode) {
+          event.preventDefault();
+          const rect = renderer.domElement.getBoundingClientRect();
+          const mouse = new THREE.Vector2(
+            ((event.clientX - rect.left) / rect.width) * 2 - 1,
+            -((event.clientY - rect.top) / rect.height) * 2 + 1
+          );
+          const raycaster = new THREE.Raycaster();
+          raycaster.setFromCamera(mouse, currentCamera);
+          const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+          lineStartPoint = new THREE.Vector3();
+          raycaster.ray.intersectPlane(groundPlane, lineStartPoint);
+          lineStartPoint.x = Math.max(0, lineStartPoint.x);
+          lineStartPoint.y = Math.max(0, lineStartPoint.y);
+          lineStartPoint.z = Math.max(0, lineStartPoint.z);
+          currentLinePoints = [ lineStartPoint.clone(), lineStartPoint.clone() ];
+          const lineMaterial = new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 5 });
+          const lineGeometry = new THREE.BufferGeometry().setFromPoints(currentLinePoints);
+          currentLine = new THREE.Line(lineGeometry, lineMaterial);
+          currentLine.userData = { objectType: 'line', id: nextObjectId++ };
+          scene.add(currentLine);
+          isCurrentlyDrawingLine = true;
+          renderer.domElement.addEventListener('pointermove', onPointerMoveForLine);
+          renderer.domElement.addEventListener('pointerup', onPointerUpForLine);
+          return;
+        }
+        const rect = renderer.domElement.getBoundingClientRect();
+        const mouse = new THREE.Vector2(
+          ((event.clientX - rect.left) / rect.width) * 2 - 1,
+          -((event.clientY - rect.top) / rect.height) * 2 + 1
+        );
+        const raycaster = new THREE.Raycaster();
+        raycaster.setFromCamera(mouse, currentCamera);
+        const intersects = raycaster.intersectObjects(getInteractiveObjects(), true);
+        if (intersects.length > 0) {
+          let selected = intersects[0].object;
+          if (selected.userData.nonSelectable && selected.parent) {
+            selected = selected.parent;
+          }
+          transformControls.attach(selected);
+        } else {
+          transformControls.detach();
+        }
+        render();
+      }
+
+      function onPointerMoveForLine(event) {
+        if (!isCurrentlyDrawingLine) return;
+        const rect = renderer.domElement.getBoundingClientRect();
+        const mouse = new THREE.Vector2(
+          ((event.clientX - rect.left) / rect.width) * 2 - 1,
+          -((event.clientY - rect.top) / rect.height) * 2 + 1
+        );
+        const raycaster = new THREE.Raycaster();
+        raycaster.setFromCamera(mouse, currentCamera);
+        const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+        const currentPoint = new THREE.Vector3();
+        raycaster.ray.intersectPlane(groundPlane, currentPoint);
+        currentPoint.x = Math.max(0, currentPoint.x);
+        currentPoint.y = Math.max(0, currentPoint.y);
+        currentPoint.z = Math.max(0, currentPoint.z);
+        currentLinePoints[1] = currentPoint.clone();
+        currentLine.geometry.setFromPoints(currentLinePoints);
+        render();
+      }
+
+      function onPointerUpForLine(event) {
+        if (!isCurrentlyDrawingLine) return;
+        isCurrentlyDrawingLine = false;
+        renderer.domElement.removeEventListener('pointermove', onPointerMoveForLine);
+        renderer.domElement.removeEventListener('pointerup', onPointerUpForLine);
+        if (currentLinePoints.length >= 2) {
+          const start = currentLinePoints[0];
+          const end = currentLinePoints[1];
+          const distance = start.distanceTo(end);
+          const labelText = distance.toFixed(1) + " m";
+          const labelSprite = makeTextSprite(labelText, { fontsize: 12, borderThickness: 1 });
+          const midPoint = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
+          labelSprite.position.copy(midPoint);
+          labelSprite.position.y += 0.3;
+          scene.add(labelSprite);
+          currentLine.userData.dimensionLabel = labelSprite;
+        }
+        lineObjects.push(currentLine);
+        currentLine = null;
+        render();
+        updateObjectList();
+        saveState();
+      }
+
+      function onDoubleClick(event) {
+        event.preventDefault();
+        const rect = renderer.domElement.getBoundingClientRect();
+        const mouse = new THREE.Vector2(
+          ((event.clientX - rect.left) / rect.width) * 2 - 1,
+          -((event.clientY - rect.top) / rect.height) * 2 + 1
+        );
+        const raycaster = new THREE.Raycaster();
+        raycaster.setFromCamera(mouse, currentCamera);
+        const intersects = raycaster.intersectObjects(lineObjects, true);
+        if (intersects.length > 0) {
+          let lineObj = intersects[0].object;
+          if (lineObj.userData.objectType !== 'line' && lineObj.parent && lineObj.parent.userData.objectType === 'line') {
+            lineObj = lineObj.parent;
+          }
+          editLineMeasurement(lineObj);
+        }
+      }
+
+      function editLineMeasurement(lineObj) {
+        const posAttr = lineObj.geometry.attributes.position;
+        const p0 = new THREE.Vector3(posAttr.getX(0), posAttr.getY(0), posAttr.getZ(0));
+        const p1 = new THREE.Vector3(posAttr.getX(1), posAttr.getY(1), posAttr.getZ(1));
+        const currentLength = p0.distanceTo(p1);
+        const newLengthStr = prompt("Enter new measurement (m) for this line:", currentLength.toFixed(1));
+        const newLength = parseFloat(newLengthStr);
+        if (!isNaN(newLength)) {
+          const direction = new THREE.Vector3().subVectors(p1, p0).normalize();
+          const newP1 = new THREE.Vector3().addVectors(p0, direction.multiplyScalar(newLength));
+          newP1.x = Math.max(0, newP1.x);
+          newP1.y = Math.max(0, newP1.y);
+          newP1.z = Math.max(0, newP1.z);
+          posAttr.setXYZ(1, newP1.x, newP1.y, newP1.z);
+          posAttr.needsUpdate = true;
+          if (lineObj.userData.dimensionLabel) scene.remove(lineObj.userData.dimensionLabel);
+          const labelSprite = makeTextSprite(newLength.toFixed(1) + " m", { fontsize: 12, borderThickness: 1 });
+          const midPoint = new THREE.Vector3().addVectors(p0, newP1).multiplyScalar(0.5);
+          labelSprite.position.copy(midPoint);
+          labelSprite.position.y += 0.3;
+          scene.add(labelSprite);
+          lineObj.userData.dimensionLabel = labelSprite;
+          render();
+          updateObjectList();
+          saveState();
+        }
+      }
+
+      function updateObjectList() {
+        const ul = document.getElementById('objectListUL');
+        ul.innerHTML = '';
+        const allObjects = buildingObjects.concat(cameraObjects, lineObjects);
+        allObjects.forEach((obj) => {
+          const li = document.createElement('li');
+          li.dataset.id = obj.userData.id;
+          let details = "";
+          if (obj.userData.objectType === 'building') {
+            details = `Position: X: ${obj.position.x.toFixed(1)} m, Y: ${obj.position.y.toFixed(1)} m, Z: ${obj.position.z.toFixed(1)} m`;
+          } else if (obj.userData.objectType === 'camera') {
+            details = `Position: X: ${obj.position.x.toFixed(1)} m, Y: ${obj.position.y.toFixed(1)} m, Z: ${obj.position.z.toFixed(1)} m<br>
+              Rotation: X: ${THREE.MathUtils.radToDeg(obj.rotation.x).toFixed(1)}°, Y: ${THREE.MathUtils.radToDeg(obj.rotation.y).toFixed(1)}°, Z: ${THREE.MathUtils.radToDeg(obj.rotation.z).toFixed(1)}°`;
+          } else if (obj.userData.objectType === 'line') {
+            const posAttr = obj.geometry.attributes.position;
+            const p0 = new THREE.Vector3(posAttr.getX(0), posAttr.getY(0), posAttr.getZ(0));
+            const p1 = new THREE.Vector3(posAttr.getX(1), posAttr.getY(1), posAttr.getZ(1));
+            const dist = p0.distanceTo(p1).toFixed(1);
+            const mid = new THREE.Vector3().addVectors(p0, p1).multiplyScalar(0.5);
+            details = `Length: ${dist} m<br>Midpoint: X: ${mid.x.toFixed(1)} m, Y: ${mid.y.toFixed(1)} m, Z: ${mid.z.toFixed(1)} m`;
+          }
+          li.innerHTML = `<div class="object-card">
+            <div class="object-header">${obj.userData.objectType.charAt(0).toUpperCase() + obj.userData.objectType.slice(1)} (ID: ${obj.userData.id})</div>
+            <div class="object-details">${details}</div>
+            <div class="object-actions">
+              <button class="edit-btn">Edit</button>
+              <button class="delete-btn">Delete</button>
+            </div>
+          </div>`;
+          li.querySelector('.edit-btn').addEventListener('click', () => {
+            if (obj.userData.objectType === 'line') {
+              editLineMeasurement(obj);
+            } else {
+              editObject(obj);
+            }
+          });
+          li.querySelector('.delete-btn').addEventListener('click', () => {
+            deleteObject(obj);
+          });
+          ul.appendChild(li);
+        });
+      }
+
+      function editObject(obj) {
+        const newX = Math.max(0, parseFloat(prompt("Enter new X position (m):", obj.position.x)));
+        const newY = Math.max(0, parseFloat(prompt("Enter new Y position (m):", obj.position.y)));
+        const newZ = Math.max(0, parseFloat(prompt("Enter new Z position (m):", obj.position.z)));
+        if (!isNaN(newX) && !isNaN(newY) && !isNaN(newZ)) {
+          obj.position.set(newX, newY, newZ);
+          if (obj.userData.objectType === 'building') {
+            obj.position.y = obj.userData.height / 2;
+          }
+        }
+        if (obj.userData.objectType === 'camera') {
+          const newRotX = parseFloat(prompt("Enter new X rotation (deg):", THREE.MathUtils.radToDeg(obj.rotation.x)));
+          const newRotY = parseFloat(prompt("Enter new Y rotation (deg):", THREE.MathUtils.radToDeg(obj.rotation.y)));
+          const newRotZ = parseFloat(prompt("Enter new Z rotation (deg):", THREE.MathUtils.radToDeg(obj.rotation.z)));
+          if (!isNaN(newRotX) && !isNaN(newRotY) && !isNaN(newRotZ)) {
+            obj.rotation.set(THREE.MathUtils.degToRad(newRotX), THREE.MathUtils.degToRad(newRotY), THREE.MathUtils.degToRad(newRotZ));
+          }
+        }
+        render();
+        updateObjectList();
+        saveState();
+      }
+
+      function deleteObject(obj) {
+        transformControls.detach();
+        scene.remove(obj);
+        if (obj.userData.objectType === 'building') {
+          const idx = buildingObjects.indexOf(obj);
+          if (idx > -1) buildingObjects.splice(idx, 1);
+        } else if (obj.userData.objectType === 'camera') {
+          const idx = cameraObjects.indexOf(obj);
+          if (idx > -1) cameraObjects.splice(idx, 1);
+        } else if (obj.userData.objectType === 'line') {
+          const idx = lineObjects.indexOf(obj);
+          if (idx > -1) lineObjects.splice(idx, 1);
+          if (obj.userData.dimensionLabel) scene.remove(obj.userData.dimensionLabel);
+        }
+        updateObjectList();
+        render();
+        saveState();
+      }
+
+      function onKeyDown(event) {
+        switch (event.key) {
+          case 'q':
+            transformControls.setSpace(transformControls.space === 'local' ? 'world' : 'local');
+            break;
+          case 'Shift':
+            transformControls.setTranslationSnap(1);
+            transformControls.setRotationSnap(THREE.MathUtils.degToRad(15));
+            transformControls.setScaleSnap(0.25);
+            break;
+          case 'w':
+            transformControls.setMode('translate');
+            break;
+          case 'e':
+            transformControls.setMode('rotate');
+            break;
+          case 'r':
+            transformControls.setMode('scale');
+            break;
+          case 'c':
+            if (transformControls.object && transformControls.object.userData.objectType === 'camera') {
+              if (!isCameraViewMode) {
+                activeCameraObject = transformControls.object;
+                activeCameraObject.visible = false;
+                editorCamera = currentCamera;
+                cameraView = new THREE.PerspectiveCamera(
+                  activeCameraObject.userData.hFOV,
+                  (window.innerWidth - 550) / window.innerHeight,
+                  0.1,
+                  10000
+                );
+                activeCameraObject.updateMatrixWorld();
+                cameraView.position.setFromMatrixPosition(activeCameraObject.matrixWorld);
+                cameraView.quaternion.setFromRotationMatrix(activeCameraObject.matrixWorld);
+                cameraView.updateProjectionMatrix();
+                currentCamera = cameraView;
+                isCameraViewMode = true;
+                orbitControls.enabled = false;
+                transformControls.enabled = false;
+              } else {
+                if (activeCameraObject) {
+                  activeCameraObject.visible = true;
+                }
+                currentCamera = editorCamera;
+                isCameraViewMode = false;
+                orbitControls.enabled = true;
+                transformControls.enabled = true;
+                activeCameraObject = null;
+              }
+              onWindowResize();
+              render();
+            }
+            break;
+          case 'v': {
+            const randomFoV = Math.random() + 0.1;
+            const randomZoom = Math.random() + 0.1;
+            cameraPersp.fov = randomFoV * 160;
+            cameraOrtho.bottom = -randomFoV * 500;
+            cameraOrtho.top = randomFoV * 500;
+            cameraPersp.zoom = randomZoom * 5;
+            cameraOrtho.zoom = randomZoom * 5;
+            onWindowResize();
+            break;
+          }
+          case '+':
+          case '=':
+            transformControls.setSize(transformControls.size + 0.1);
+            break;
+          case '-':
+          case '_':
+            transformControls.setSize(Math.max(transformControls.size - 0.1, 0.1));
+            break;
+          case 'x':
+            transformControls.showX = !transformControls.showX;
+            break;
+          case 'y':
+            transformControls.showY = !transformControls.showY;
+            break;
+          case 'z':
+            transformControls.showZ = !transformControls.showZ;
+            break;
+          case ' ':
+            transformControls.enabled = !transformControls.enabled;
+            break;
+          case 'Escape':
+            transformControls.reset();
+            break;
+        }
+      }
+
+      function onKeyUp(event) {
+        if (event.key === 'Shift') {
+          transformControls.setTranslationSnap(null);
+          transformControls.setRotationSnap(null);
+          transformControls.setScaleSnap(null);
+        }
+      }
+
+      function onWindowResize() {
+        const aspect = (window.innerWidth - 550) / window.innerHeight;
+        cameraPersp.aspect = aspect;
+        cameraPersp.updateProjectionMatrix();
+        cameraOrtho.left = -cameraOrtho.bottom * aspect;
+        cameraOrtho.right = cameraOrtho.top * aspect;
+        cameraOrtho.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth - 550, window.innerHeight);
+        render();
+      }
+
+      function animate() {
+        requestAnimationFrame(animate);
+        orbitControls.update();
+        render();
+      }
+
+      function render() {
+        renderer.render(scene, currentCamera);
+      }
+
+      function exportReport() {
+        let report = "Camera Installation Report\n";
+        report += "==========================\n\n";
+        cameraObjects.forEach(cam => {
+          report += `Camera: ${cam.userData.name} (ID: ${cam.userData.id})\n`;
+          report += `Position: X: ${cam.position.x.toFixed(1)} m, Y: ${cam.position.y.toFixed(1)} m, Z: ${cam.position.z.toFixed(1)} m\n`;
+          report += `Rotation: X: ${THREE.MathUtils.radToDeg(cam.rotation.x).toFixed(1)}°, Y: ${THREE.MathUtils.radToDeg(cam.rotation.y).toFixed(1)}°, Z: ${THREE.MathUtils.radToDeg(cam.rotation.z).toFixed(1)}°\n`;
+          report += `Horizontal FOV: ${cam.userData.hFOV}°, Vertical FOV: ${cam.userData.vFOV}°, Range: ${cam.userData.range || 20} m\n\n`;
+        });
+        const blob = new Blob([report], { type: "text/plain;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = "camera_installation_report.txt";
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+
+      document.getElementById('exportReport').addEventListener('click', exportReport);
+      animate();
+    </script>
+  </body>
+</html>
